@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ERP Escolar - Gestão</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- O seu CSS -->
+  <link rel="stylesheet" href="style.css">
+  
+  <!-- ATENÇÃO: COLOQUE ESTE CSS NO SEU style.css E REMOVA ESTA TAG <style> SE FOR USAR SEPARADO -->
+  <style>
+    .hidden-view { display: none !important; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .pt-safe { padding-top: env(safe-area-inset-top); }
+    .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+    .animate-fade-in { animation: fadeIn 0.3s ease-in-out; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen">
+
+  <div id="view-login" class="min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md text-center">
+      <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+        <i data-lucide="book-open" class="w-8 h-8"></i>
+      </div>
+      <h1 class="text-2xl font-bold text-slate-800 mb-2">ERP Escolar</h1>
+      <p class="text-slate-500 mb-8">Selecione o seu perfil para aceder</p>
+      <div class="space-y-4">
+        <button onclick="app.login('teacher')" class="w-full py-4 px-4 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2 touch-manipulation">
+          <i data-lucide="user" class="w-5 h-5"></i> Sou a Professora
+        </button>
+        <button onclick="app.login('parent', 1)" class="w-full py-4 px-4 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2 touch-manipulation">
+          <i data-lucide="users" class="w-5 h-5"></i> Sou Pai/Mãe (Lucas)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="view-teacher" class="hidden-view flex h-screen overflow-hidden">
+    <aside class="w-64 bg-white border-r border-slate-200 flex-col hidden md:flex">
+      <div class="p-6 border-b border-slate-100 flex items-center gap-3">
+        <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white">
+          <i data-lucide="book-open" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h2 class="font-bold text-slate-800 leading-tight">Professora</h2>
+          <p class="text-xs text-slate-500">Gestão Escolar</p>
+        </div>
+      </div>
+      <nav class="flex-1 p-4 space-y-2">
+        <button onclick="app.switchTeacherTab('students')" id="tab-btn-students" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors bg-blue-50 text-blue-700">
+          <i data-lucide="users" class="w-5 h-5"></i> Turma & Alunos
+        </button>
+        <button onclick="app.switchTeacherTab('routine')" id="tab-btn-routine" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors text-slate-600 hover:bg-slate-50">
+          <i data-lucide="calendar" class="w-5 h-5"></i> Rotina Semanal
+        </button>
+        <button onclick="app.openAttendanceModal()" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-slate-600 hover:bg-slate-50 transition-colors mt-4 border border-slate-200">
+          <i data-lucide="check-square" class="w-5 h-5"></i> Fazer Chamada
+        </button>
+      </nav>
+      <div class="p-4 border-t border-slate-100">
+        <button onclick="app.logout()" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-red-600 hover:bg-red-50 transition-colors">
+          <i data-lucide="log-out" class="w-5 h-5"></i> Sair
+        </button>
+      </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen overflow-hidden relative">
+      <div class="md:hidden flex items-center justify-between bg-white px-4 py-3 border-b border-slate-200 flex-shrink-0 pt-safe z-30 shadow-sm">
+        <div class="flex items-center gap-3">
+          <button onclick="app.openMobileMenu()" class="p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-xl touch-manipulation">
+            <i data-lucide="menu" class="w-6 h-6"></i>
+          </button>
+          <h2 id="mobile-header-title" class="font-bold text-slate-800 text-lg">A Minha Turma</h2>
+        </div>
+        <button id="mobile-header-add-btn" onclick="app.openAddStudentModal()" class="w-9 h-9 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-lg flex items-center justify-center text-white shadow-sm transition-colors touch-manipulation">
+          <i data-lucide="plus" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div id="mobile-menu-overlay" onclick="app.closeMobileMenu()" class="hidden-view fixed inset-0 bg-slate-900/60 z-40 transition-opacity duration-300 opacity-0 md:hidden"></div>
+
+      <aside id="mobile-sidebar" class="fixed top-0 left-0 bottom-0 w-72 max-w-[85vw] bg-white z-50 transform -translate-x-full transition-transform duration-300 shadow-2xl flex flex-col md:hidden pt-safe pb-safe">
+        <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow-md">
+              <i data-lucide="book-open" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <h2 class="font-bold text-slate-800 leading-tight text-lg">Professora</h2>
+              <p class="text-xs text-slate-500 font-medium">Gestão Escolar</p>
+            </div>
+          </div>
+          <button onclick="app.closeMobileMenu()" class="p-2 -mr-2 text-slate-400 hover:bg-slate-200 hover:text-slate-600 rounded-full touch-manipulation transition-colors">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+        <nav class="flex-1 p-4 space-y-2 overflow-y-auto no-scrollbar">
+          <button onclick="app.switchTeacherTab('students'); app.closeMobileMenu()" id="mob-side-tab-students" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-medium transition-colors bg-blue-50 text-blue-700">
+            <i data-lucide="users" class="w-5 h-5"></i> Turma & Alunos
+          </button>
+          <button onclick="app.switchTeacherTab('routine'); app.closeMobileMenu()" id="mob-side-tab-routine" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-medium transition-colors text-slate-600 hover:bg-slate-50">
+            <i data-lucide="calendar" class="w-5 h-5"></i> Rotina Semanal
+          </button>
+          <div class="h-px bg-slate-100 my-2"></div>
+          <button onclick="app.openAttendanceModal(); app.closeMobileMenu()" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-medium text-slate-600 hover:bg-slate-50 transition-colors border border-slate-200">
+            <i data-lucide="check-square" class="w-5 h-5"></i> Fazer Chamada
+          </button>
+        </nav>
+        <div class="p-4 border-t border-slate-100 bg-slate-50/50">
+          <button onclick="app.logout()" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-medium text-red-600 hover:bg-red-50 transition-colors">
+            <i data-lucide="log-out" class="w-5 h-5"></i> Sair da Conta
+          </button>
+        </div>
+      </aside>
+
+      <div class="flex-1 overflow-y-auto p-4 md:p-8 no-scrollbar pb-24">
+        <div id="tab-students" class="block">
+          <div class="hidden md:flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-slate-800">A Minha Turma</h2>
+            <button onclick="app.openAddStudentModal()" class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 md:px-4 md:py-2 rounded-xl transition-colors touch-manipulation font-medium text-sm md:text-base">
+              <i data-lucide="plus" class="w-4 h-4 md:w-5 md:h-5"></i> Novo Aluno
+            </button>
+          </div>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0">
+                <i data-lucide="users" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <p class="text-xs text-slate-500 font-medium">Total de Alunos</p>
+                <p id="stat-total" class="text-lg font-bold text-slate-800">0</p>
+              </div>
+            </div>
+            <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center flex-shrink-0">
+                <i data-lucide="user-check" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <p class="text-xs text-slate-500 font-medium">Presentes Hoje</p>
+                <p id="stat-presentes" class="text-lg font-bold text-slate-800">0</p>
+              </div>
+            </div>
+            <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center flex-shrink-0">
+                <i data-lucide="user-x" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <p class="text-xs text-slate-500 font-medium">Faltas Hoje</p>
+                <p id="stat-faltas" class="text-lg font-bold text-slate-800">0</p>
+              </div>
+            </div>
+            <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center flex-shrink-0">
+                <i data-lucide="award" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <p class="text-xs text-slate-500 font-medium">Conquistas</p>
+                <p id="stat-conquistas" class="text-lg font-bold text-slate-800">0</p>
+              </div>
+            </div>
+          </div>
+          <div id="students-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        </div>
+
+        <div id="tab-routine" class="hidden-view max-w-4xl">
+          <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-slate-800">Rotina Semanal</h2>
+            <button id="btn-edit-routine" onclick="app.toggleRoutineEdit()" class="flex items-center gap-2 bg-slate-200 text-slate-700 px-4 py-2 rounded-xl touch-manipulation font-medium">
+              Editar Rotina
+            </button>
+          </div>
+          <div id="routine-list" class="space-y-3"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="view-parent" class="hidden-view max-w-3xl mx-auto p-4 md:p-8">
+    <div class="flex items-center justify-between mb-8">
+      <h1 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+        <i data-lucide="award" class="text-blue-500 w-6 h-6"></i> Diário Escolar
+      </h1>
+      <button onclick="app.logout()" class="flex items-center gap-2 text-slate-500 hover:text-red-500 transition-colors p-2 touch-manipulation">
+        <i data-lucide="log-out" class="w-5 h-5"></i> <span class="hidden md:inline">Sair</span>
+      </button>
+    </div>
+    <div id="parent-content"></div>
+  </div>
+
+  <div id="modal-attendance" class="hidden-view fixed inset-0 bg-white z-50 flex flex-col overflow-hidden animate-fade-in">
+    <div class="bg-slate-900 text-white p-4 md:p-6 flex items-center justify-between flex-shrink-0">
+      <div>
+        <h1 class="text-xl md:text-2xl font-bold flex items-center gap-2">
+          <i data-lucide="check-square" class="text-emerald-400 w-6 h-6"></i> Chamada
+        </h1>
+        <p class="text-sm text-slate-400 mt-1 hidden md:block">Marque os alunos presentes hoje.</p>
+      </div>
+      <button onclick="app.closeAttendanceModal()" class="p-3 hover:bg-slate-800 rounded-full transition-colors touch-manipulation">
+        <i data-lucide="x" class="w-6 h-6"></i>
+      </button>
+    </div>
+    <div class="bg-slate-100 p-4 flex justify-center border-b border-slate-200 flex-shrink-0">
+      <input type="date" id="attendance-date" onchange="app.renderAttendanceList()" class="px-4 py-3 rounded-xl border border-slate-300 shadow-sm outline-none w-full max-w-xs text-center font-medium text-slate-700 bg-white">
+    </div>
+    <div class="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-50 no-scrollbar">
+      <div id="attendance-list" class="max-w-3xl mx-auto space-y-3 pb-8"></div>
+    </div>
+  </div>
+
+  <div id="modal-add-student" class="hidden-view fixed inset-0 bg-slate-50 z-50 flex flex-col animate-fade-in">
+    <div class="bg-white px-4 py-3 border-b border-slate-200 flex items-center gap-4 flex-shrink-0 pt-safe z-30 shadow-sm">
+      <button onclick="app.closeAddStudentModal()" class="p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-full transition-colors touch-manipulation">
+        <i data-lucide="arrow-left" class="w-6 h-6"></i>
+      </button>
+      <h2 class="text-xl font-bold text-slate-800">Adicionar Novo Aluno</h2>
+    </div>
+    <div class="flex-1 overflow-y-auto p-4 md:p-8 no-scrollbar">
+      <div class="max-w-3xl mx-auto space-y-6 pb-6">
+        <div class="flex flex-col items-center justify-center mb-8 mt-4 relative">
+          <input type="file" id="input-new-foto" accept="image/*" class="hidden" onchange="app.handleImageSelection(event)">
+          <div onclick="document.getElementById('input-new-foto').click()" class="w-28 h-28 bg-blue-50 rounded-full border-4 border-white shadow-md flex items-center justify-center text-blue-500 mb-3 cursor-pointer overflow-hidden relative group">
+            <i id="new-student-photo-icon" data-lucide="camera" class="w-10 h-10 group-hover:scale-110 transition-transform"></i>
+            <img id="new-student-photo-preview" class="w-full h-full object-cover hidden">
+            <div class="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+               <i data-lucide="upload" class="text-white w-6 h-6"></i>
+            </div>
+          </div>
+          <p class="text-slate-500 text-sm font-medium">Toque para adicionar foto</p>
+        </div>
+
+        <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+          <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <i data-lucide="user" class="w-5 h-5 text-blue-500"></i> Dados Pessoais
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-slate-700 mb-1">Nome Completo *</label>
+              <input type="text" id="input-new-nome" placeholder="Ex: Lucas Silva" class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 outline-none focus:bg-white focus:border-blue-500 transition-all text-slate-700">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Idade *</label>
+              <input type="number" id="input-new-idade" placeholder="Ex: 6" class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 outline-none focus:bg-white focus:border-blue-500 transition-all text-slate-700">
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+          <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <i data-lucide="users" class="w-5 h-5 text-emerald-500"></i> Filiação e Contactos
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Nome da Mãe</label>
+              <input type="text" id="input-new-mae" placeholder="Ex: Mariana Silva" class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 outline-none focus:bg-white focus:border-blue-500 transition-all text-slate-700">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Nome do Pai</label>
+              <input type="text" id="input-new-pai" placeholder="Ex: Carlos Silva" class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 outline-none focus:bg-white focus:border-blue-500 transition-all text-slate-700">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Contacto 1 (Telemóvel)</label>
+              <input type="text" id="input-new-contato1" placeholder="Ex: 912345678" class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 outline-none focus:bg-white focus:border-blue-500 transition-all text-slate-700">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Contacto 2</label>
+              <input type="text" id="input-new-contato2" placeholder="Ex: 912345679" class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 outline-none focus:bg-white focus:border-blue-500 transition-all text-slate-700">
+            </div>
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-slate-700 mb-1">Morada</label>
+              <input type="text" id="input-new-endereco" placeholder="Ex: Rua das Flores, 123" class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 outline-none focus:bg-white focus:border-blue-500 transition-all text-slate-700">
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+          <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <i data-lucide="shield-check" class="w-5 h-5 text-purple-500"></i> Autorizações e Saúde
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Resp. Autorizado 1</label>
+              <input type="text" id="input-new-resp1" placeholder="Pessoa autorizada" class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 outline-none focus:bg-white focus:border-blue-500 transition-all text-slate-700">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Resp. Autorizado 2</label>
+              <input type="text" id="input-new-resp2" placeholder="Pessoa autorizada" class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 outline-none focus:bg-white focus:border-blue-500 transition-all text-slate-700">
+            </div>
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-slate-700 mb-1">Indicações (Saúde, Alergias)</label>
+              <textarea id="input-new-indicacoes" placeholder="Ex: Alergia a amendoim..." rows="3" class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 outline-none focus:bg-white focus:border-blue-500 transition-all text-slate-700"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="bg-white p-4 border-t border-slate-100 flex justify-end gap-3 flex-shrink-0 pb-safe shadow-[0_-4px_15px_-3px_rgba(0,0,0,0.05)]">
+      <button onclick="app.closeAddStudentModal()" class="px-6 py-3.5 text-slate-600 font-medium hover:bg-slate-100 rounded-2xl transition-colors touch-manipulation">Cancelar</button>
+      <button id="btn-save-student" onclick="app.saveNewStudent()" class="px-6 py-3.5 bg-blue-600 text-white font-medium rounded-2xl hover:bg-blue-700 active:bg-blue-800 transition-colors touch-manipulation flex items-center gap-2 shadow-lg shadow-blue-600/30">
+        Guardar Aluno
+      </button>
+    </div>
+  </div>
+
+  <div id="modal-profile" class="hidden-view fixed inset-0 bg-slate-50 z-50 flex flex-col animate-fade-in">
+    <div id="profile-header" class="bg-white px-4 py-3 border-b border-slate-200 flex items-center gap-4 flex-shrink-0 pt-safe z-30 shadow-sm"></div>
+    <div class="flex-1 overflow-y-auto p-4 md:p-8 no-scrollbar pb-20">
+      <div class="max-w-3xl mx-auto">
+        <div id="profile-header-info" class="flex flex-col items-center justify-center mb-6 mt-2"></div>
+
+        <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 mb-6">
+          <div class="flex justify-between items-start mb-4">
+            <h3 class="font-bold text-slate-800 flex items-center gap-2"><i data-lucide="info" class="text-blue-500 w-5 h-5"></i> Informações Gerais</h3>
+            <a id="profile-whatsapp" href="#" target="_blank" class="hidden items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors shadow-sm touch-manipulation">
+              <i data-lucide="message-circle" class="w-4 h-4"></i> Contatar
+            </a>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div><p class="text-xs text-slate-400 font-bold uppercase mb-0.5">Mãe</p><p id="profile-mae" class="text-slate-700 text-sm md:text-base">-</p></div>
+            <div><p class="text-xs text-slate-400 font-bold uppercase mb-0.5">Pai</p><p id="profile-pai" class="text-slate-700 text-sm md:text-base">-</p></div>
+            <div class="sm:col-span-2"><p class="text-xs text-slate-400 font-bold uppercase mb-0.5">Responsáveis Autorizados</p><p id="profile-responsaveis" class="text-slate-700 text-sm md:text-base">-</p></div>
+            <div class="sm:col-span-2 hidden" id="profile-indicacoes-container"><p class="text-xs text-red-400 font-bold uppercase mb-0.5">Indicações / Alergias</p><p id="profile-indicacoes" class="text-red-700 text-sm md:text-base">-</p></div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+          <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col">
+            <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2"><i data-lucide="award" class="text-yellow-500 w-5 h-5"></i> Medalhas <span id="profile-medal-count" class="bg-blue-100 text-blue-700 text-xs py-0.5 px-2.5 rounded-full ml-auto font-bold shadow-sm">0</span></h3>
+            <div class="mb-2">
+              <input type="text" id="input-achievement-desc" placeholder="Descreva o motivo (Opcional)..." class="w-full mb-3 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:bg-white focus:border-blue-500 transition-all text-slate-700">
+              <div class="grid grid-cols-4 gap-2">
+                <button onclick="app.addAchievement('Cordial')" class="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors touch-manipulation"><i data-lucide="smile" class="w-6 h-6"></i><span class="text-[9px] font-bold uppercase tracking-wide">Cordial</span></button>
+                <button onclick="app.addAchievement('Cooperativo')" class="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors touch-manipulation"><i data-lucide="users" class="w-6 h-6"></i><span class="text-[9px] font-bold uppercase tracking-wide">Coop.</span></button>
+                <button onclick="app.addAchievement('Desordem')" class="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 transition-colors touch-manipulation"><i data-lucide="alert-triangle" class="w-6 h-6"></i><span class="text-[9px] font-bold uppercase tracking-wide">Desord.</span></button>
+                <button onclick="app.addAchievement('Super')" class="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl bg-yellow-50 text-yellow-600 hover:bg-yellow-100 transition-colors touch-manipulation"><i data-lucide="star" class="w-6 h-6"></i><span class="text-[9px] font-bold uppercase tracking-wide">Super</span></button>
+              </div>
+            </div>
+            <button onclick="app.toggleMedalHistory()" class="w-full py-3 flex justify-between items-center text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors border-t border-slate-100 mt-4">Ver histórico de medalhas<i data-lucide="chevron-down" id="icon-medal-history" class="w-4 h-4 transition-transform duration-300"></i></button>
+            <ul id="profile-achievements" class="space-y-3 mt-3 hidden flex-1 overflow-y-auto max-h-64 no-scrollbar"></ul>
+          </div>
+
+          <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+            <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2"><i data-lucide="book-open" class="text-emerald-500 w-5 h-5"></i> Atividades</h3>
+            <div class="flex gap-2 mb-4">
+              <input type="text" id="input-activity" placeholder="Descrever atividade..." class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:bg-white focus:border-blue-500 transition-all text-slate-700">
+              <button id="btn-add-activity" onclick="app.addActivity()" class="bg-blue-600 text-white px-5 py-3 rounded-xl text-sm font-medium touch-manipulation active:bg-blue-700 transition-colors">Add</button>
+            </div>
+            <ul id="profile-activities" class="space-y-3"></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- A SUA LIGAÇÃO PARA O JAVASCRIPT SEPARADO -->
+  <script src="script.js?v=safariFixFinal"></script>
+</body>
+</html>
