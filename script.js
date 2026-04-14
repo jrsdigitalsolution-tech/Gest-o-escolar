@@ -1,5 +1,4 @@
-<script>
-const SUPABASE_URL = 'https://lqfwpfaqcnfsybxchmtg.supabase.co';
+const SUPABASE_URL = '[https://lqfwpfaqcnfsybxchmtg.supabase.co](https://lqfwpfaqcnfsybxchmtg.supabase.co)';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxxZndwZmFxY25mc3lieGNobXRnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2ODk5MjIsImV4cCI6MjA5MDI2NTkyMn0.XMO-YQIzULWK2yMFoqdBVP-wYPA7P84sp4QnsuS0hks';
 
 // Mantemos o cliente oficial APENAS para os uploads de ficheiros (Storage).
@@ -637,4 +636,3 @@ const app = {
 };
 
 document.addEventListener('DOMContentLoaded', () => app.init());
-</script>
